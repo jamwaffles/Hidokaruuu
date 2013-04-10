@@ -2,8 +2,9 @@ import java.util.*;
 
 class Node {
     public final List<Arc> out = new ArrayList<Arc>();
-    public Object pathId;
+    public boolean isOnPath;
     public Arc pathOut;
+    public boolean isSource;
     public int label;
 
     public void addEdge(Node that) {
@@ -33,15 +34,12 @@ public class AV {
         // construct an n-by-n grid
         int n = 12;
         Node[][] node = new Node[n][n];
-
-        // Fill grid with nodes
+        List<Node> nodes = new ArrayList<Node>();
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                node[i][j] = new Node();
+                nodes.add((node[i][j] = new Node()));
             }
         }
-
-        // Loop through grid. Create top-left-up edges from current point
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
                 if (i >= 1) {
@@ -58,10 +56,8 @@ public class AV {
                 }
             }
         }
-        Random random = new Random();
-        Node source = node[random.nextInt(n)][random.nextInt(n)];
-        findPath(n * n - 1, random, source);
-        labelPath(source);
+        findPath(nodes);
+        labelPath(nodes);
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
                 System.out.printf("%4d", node[i][j].label);
@@ -70,18 +66,18 @@ public class AV {
         }
     }
 
-    private static void findPath(int length, Random random, Node source) {
-        Object pathId = new Object();
-        source.pathId = pathId;
-        Node sink = source;
-        while (length > 0) {
+    private static void findPath(List<Node> nodes) {
+        for (Node node : nodes) {
+            node.isOnPath = false;
+        }
+        Random random = new Random();
+        Node sink = nodes.get(random.nextInt(nodes.size()));
+        sink.isOnPath = true;
+        int isNotOnPathCount = nodes.size() - 1;
+        while (isNotOnPathCount > 0) {
             sink.pathOut = sink.out.get(random.nextInt(sink.out.size()));
             sink = sink.pathOut.head;
-            if (sink.pathId != pathId) {
-                // extend
-                sink.pathId = pathId;
-                length--;
-            } else {
+            if (sink.isOnPath) {
                 // rotate
                 sink = sink.pathOut.head;
                 Arc reverse = null;
@@ -92,11 +88,30 @@ public class AV {
                     reverse = temp.reverse;
                     node = temp.head;
                 } while (node != sink);
+            } else {
+                // extend
+                sink.isOnPath = true;
+                isNotOnPathCount--;
             }
         }
     }
 
-    private static void labelPath(Node source) {
+    private static void labelPath(Collection<Node> nodes) {
+        for (Node node : nodes) {
+            node.isSource = true;
+        }
+        for (Node node : nodes) {
+            if (node.pathOut != null) {
+                node.pathOut.head.isSource = false;
+            }
+        }
+        Node source = null;
+        for (Node node : nodes) {
+            if (node.isSource) {
+                source = node;
+                break;
+            }
+        }
         int count = 0;
         while (true) {
             source.label = ++count;
